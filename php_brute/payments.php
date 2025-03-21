@@ -247,23 +247,19 @@ include ("siderbar.php");
                 <?php
                 include 'database.php';
 
-                $query = "SELECT PAYER.idpaye, CLIENT.nom, CLIENT.codecli, CLIENT.quartier, CLIENT.email, COMPTEUR.type, 
-                            COMPTEUR.pu, COMPTEUR.codecompteur, MAX(CASE WHEN COMPTEUR.type = 'elec' THEN RELEVE_ELEC.codeElec
-                            WHEN COMPTEUR.type = 'eau' THEN RELEVE_EAU.codeEau END) AS code_releve, MAX(CASE 
-                            WHEN COMPTEUR.type = 'elec' THEN RELEVE_ELEC.valeur1 WHEN COMPTEUR.type = 'eau' THEN RELEVE_EAU.valeur2
-                            END) AS consommation, MAX(CASE 
-                            WHEN COMPTEUR.type = 'elec' THEN RELEVE_ELEC.date_presentation
-                            WHEN COMPTEUR.type = 'eau' THEN RELEVE_EAU.date_presentation2
-                            END) AS date_presentation, MAX(CASE 
-                            WHEN COMPTEUR.type = 'elec' THEN RELEVE_ELEC.date_limite_paie
-                            WHEN COMPTEUR.type = 'eau' THEN RELEVE_EAU.date_limite_paie2 END) AS date_limite,
-                            PAYER.datepaie, PAYER.montant FROM PAYER
-                            INNER JOIN CLIENT ON PAYER.codecli = CLIENT.codecli
-                            INNER JOIN COMPTEUR ON CLIENT.codecli = COMPTEUR.codecli
-                            LEFT JOIN RELEVE_ELEC ON COMPTEUR.codecompteur = RELEVE_ELEC.codecompteur AND COMPTEUR.type = 'elec'
-                            LEFT JOIN RELEVE_EAU ON COMPTEUR.codecompteur = RELEVE_EAU.codecompteur AND COMPTEUR.type = 'eau'
-                            WHERE PAYER.montant > 0 GROUP BY PAYER.idpaye ORDER BY PAYER.idpaye DESC";
-
+                $query = "( SELECT p.idpaye, c.codecli, c.nom, CASE WHEN ec.type = 'elec' THEN e.codeElec
+                            ELSE NULL END AS code_releve, ec.pu AS pu, e.valeur1 AS consommation, e.date_presentation 
+                            AS date_presentation, e.date_limite_paie AS date_limite, p.datepaie, p.montant, c.email, 
+                            c.quartier, 'elec' AS type FROM payer p JOIN client c ON p.codecli = c.codecli 
+                            JOIN compteur ec ON c.codecli = ec.codecli AND ec.type = 'elec' 
+                            JOIN releve_elec e ON ec.codecompteur = e.codecompteur WHERE p.montant = (e.valeur1 * ec.pu)
+                            ) UNION ( SELECT p.idpaye, c.codecli, c.nom, CASE WHEN wc.type = 'eau' THEN w.codeEau
+                            ELSE NULL END AS code_releve, wc.pu AS pu, w.valeur2 AS consommation, w.date_presentation2 
+                            AS date_presentation, w.date_limite_paie2 AS date_limite, p.datepaie, p.montant, c.email, 
+                            c.quartier, 'eau' AS type FROM payer p JOIN client c ON p.codecli = c.codecli 
+                            JOIN compteur wc ON c.codecli = wc.codecli AND wc.type = 'eau' 
+                            JOIN releve_eau w ON wc.codecompteur = w.codecompteur 
+                            WHERE p.montant = (w.valeur2 * wc.pu) ) ORDER BY idpaye ASC";
                 $query_run = mysqli_query($con, $query);
                 ?>
 
@@ -285,7 +281,7 @@ include ("siderbar.php");
                             <tr>
                                 <td><?php echo htmlspecialchars($row['idpaye']); ?></td>
                                 <td><?php echo htmlspecialchars($row['nom']); ?></td>
-                                <td><?php echo htmlspecialchars($row['datepaie']); ?></td>
+                                <td><?php echo !empty($row['datepaie']) ? date('d - m - Y', strtotime($row['datepaie'])) : 'Non défini'; ?></td>
                                 <td><?php echo htmlspecialchars($row['montant']); ?> Ar</td>
                                 <td>
                                     <div class="action-buttons">
@@ -351,10 +347,25 @@ include ("siderbar.php");
                     if (empty($idpaye) || empty($codecli) || empty($datepaie) || empty($codecompteur)) {
                         $_SESSION['status'] = "Tous les champs sont obligatoires.";
                         echo "<script type='text/javascript'>
-                              window.location.href = 'payments.php';
-                              </script>";
+              window.location.href = 'payments.php';
+              </script>";
                         exit();
                     }
+
+                    $query_check_idpaye = "SELECT idpaye FROM payer WHERE idpaye = ?";
+                    $stmt_check = mysqli_prepare($con, $query_check_idpaye);
+                    mysqli_stmt_bind_param($stmt_check, "s", $idpaye);
+                    mysqli_stmt_execute($stmt_check);
+                    mysqli_stmt_store_result($stmt_check);
+
+                    if (mysqli_stmt_num_rows($stmt_check) > 0) {
+                        echo "<script type='text/javascript'>
+              alert('Erreur : Le numéro de facture $idpaye existe déjà.');
+              window.location.href = 'payments.php';
+              </script>";
+                        exit();
+                    }
+                    mysqli_stmt_close($stmt_check);
 
                     $query_compteur = "SELECT type, pu FROM compteur WHERE codecompteur = ?";
                     $stmt = mysqli_prepare($con, $query_compteur);
@@ -368,8 +379,8 @@ include ("siderbar.php");
                     } else {
                         $_SESSION['status'] = "Aucun compteur trouvé.";
                         echo "<script type='text/javascript'>
-                              window.location.href = 'payments.php';
-                              </script>";
+              window.location.href = 'payments.php';
+              </script>";
                         exit();
                     }
                     mysqli_stmt_close($stmt);
@@ -391,8 +402,8 @@ include ("siderbar.php");
                     } else {
                         $_SESSION['status'] = "Aucune donnée de relevé trouvée pour ce compteur.";
                         echo "<script type='text/javascript'>
-                              window.location.href = 'payments.php';
-                              </script>";
+              window.location.href = 'payments.php';
+              </script>";
                         exit();
                     }
                     mysqli_stmt_close($stmt);
@@ -404,8 +415,8 @@ include ("siderbar.php");
                     if (mysqli_stmt_execute($stmt)) {
                         $_SESSION['status'] = "Paiement enregistré avec succès !";
                         echo "<script type='text/javascript'>
-                              window.location.href = 'payments.php';
-                              </script>";
+              window.location.href = 'payments.php';
+              </script>";
                     } else {
                         $_SESSION['status'] = "Erreur lors de l'enregistrement du paiement : " . mysqli_error($con);
                     }
@@ -522,8 +533,8 @@ while ($row = mysqli_fetch_assoc($result)) {
                             <!-- Client -->
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Client</label>
-                                <select class="form-select" name="codecli" required>
-                                    <option value="">Sélectionner</option>
+                                <select class="form-select" name="codecli" required onchange="getMontant(this.value, '<?php echo $row['idpaye']; ?>')">
+                                <option value="">Sélectionner</option>
                                     <?php
                                     $sql = "SELECT codecli, nom FROM client ORDER BY nom ASC";
                                     $clients_result = $con->query($sql);
@@ -546,7 +557,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                             <!-- Montant -->
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Montant</label>
-                                <input type="number" step="0.01" class="form-control" name="montant" value="<?php echo $row['montant']; ?>" readonly>
+                                <input type="number" step="0.01" class="form-control" name="montant" id="montant-<?php echo $row['idpaye']; ?>" value="<?php echo $row['montant']; ?>" readonly>
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -658,22 +669,23 @@ if (isset($_POST['delete-paye'])) {
 <script src="js/bootstrap.min.js"></script>
 <script src="js/bootstrap.bundle.min.js"></script>
 <script>
-    document.getElementById('codecli').addEventListener('change', function() {
-        var codecli = this.value;
-        if (codecli) {
-            fetch('payments.php?codecli=' + codecli)
+    function getMontant(codecli, idpaye) {
+        if (codecli !== "") {
+            fetch(`get_valeur.php?codecli=${codecli}&idpaye=${idpaye}`)
                 .then(response => response.json())
                 .then(data => {
-                    if (data.status === 'success') {
-                        document.getElementById('montant').value = data.montant;
+                    if (data.status === "success") {
+                        let montantField = document.querySelector(`#montant-${idpaye}`);
+                        if (montantField) {
+                            montantField.value = data.montant;
+                        }
                     } else {
-                        alert('Erreur lors du calcul du montant.');
+                        alert("Erreur : " + data.message);
                     }
-                });
-        } else {
-            document.getElementById('montant').value = '';
+                })
+                .catch(error => console.error("Erreur AJAX :", error));
         }
-    });
+    }
 </script>
 <script>
     const deleteButtons = document.querySelectorAll('[data-bs-target="#deleteModal"]');
@@ -686,6 +698,13 @@ if (isset($_POST['delete-paye'])) {
 </script>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
+
+        function formatDate(dateString) {
+            if (!dateString) return "Non défini";
+            const date = new Date(dateString);
+            return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+
         var detailsModal = document.getElementById('detailsModal');
         detailsModal.addEventListener('show.bs.modal', function(event) {
             var button = event.relatedTarget;
@@ -698,9 +717,9 @@ if (isset($_POST['delete-paye'])) {
                 "Quartier : " + button.getAttribute("data-quartier") + "<br>" +
                 "Email : " + button.getAttribute("data-email");
 
-            document.getElementById("date-presentation").textContent = button.getAttribute("data-date-presentation");
-            document.getElementById("date-limite").textContent = button.getAttribute("data-date-limite");
-            document.getElementById("date-paie").textContent = button.getAttribute("data-datepaie");
+            document.getElementById("date-presentation").textContent = formatDate(button.getAttribute("data-date-presentation"));
+            document.getElementById("date-limite").textContent = formatDate(button.getAttribute("data-date-limite"));
+            document.getElementById("date-paie").textContent = formatDate(button.getAttribute("data-datepaie"));
 
             var releveDetails = document.getElementById("releve-details");
             releveDetails.innerHTML = '';

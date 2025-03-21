@@ -203,7 +203,7 @@ include("siderbar.php");
                     <h6 class="text-muted">Consommation Électricité</h6>
                     <h3><?php echo $row['total_valeur1'];?> kWh</h3>
                     <div class="progress">
-                        <div class="progress-bar bg-success" style="width: <?php echo $progress;?>%;"
+                        <div class="progress-bar bg-success" style="width: <?php echo $progress;?>px;"
                              aria-valuenow="<?php echo $progress;?>"
                              aria-valuemin="0" aria-valuemax="100"></div>
                     </div>
@@ -228,7 +228,7 @@ include("siderbar.php");
                     <h6 class="text-muted">Consommation Eau</h6>
                     <h3><?php echo $row['total_valeur2'];?> m³</h3>
                     <div class="progress">
-                        <div class="progress-bar bg-info" style="width: <?php echo $progress;?>%;"
+                        <div class="progress-bar bg-info" style="width: <?php echo $progress;?>px;"
                              aria-valuenow="<?php echo $progress;?>"
                              aria-valuemin="0" aria-valuemax="100"></div>
                     </div>
@@ -289,9 +289,9 @@ include("siderbar.php");
                         <td><?php echo $row['codecompteur'];?></td>
                         <td><?php echo $row['valeur1'];?></td>
                         <td></td>
-                        <td><?php echo $row['date_releve'];?></td>
-                        <td><?php echo $row['date_presentation'];?></td>
-                        <td><?php echo $row['date_limite_paie'];?></td>
+                        <td><?php echo date('d - m - Y', strtotime($row['date_releve'])); ?></td>
+                        <td><?php echo date('d - m - Y', strtotime($row['date_presentation'])); ?></td>
+                        <td><?php echo date('d - m - Y', strtotime($row['date_limite_paie'])); ?></td>
                         <td>
                             <div class="action-buttons">
                                 <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editModal-<?php echo htmlspecialchars($row['codeElec']); ?>" title="Modifier">
@@ -310,9 +310,9 @@ include("siderbar.php");
                         <td><?php echo $row['codecompteur'];?></td>
                         <td></td>
                         <td><?php echo $row['valeur2'];?></td>
-                        <td><?php echo $row['date_releve2'];?></td>
-                        <td><?php echo $row['date_presentation2'];?></td>
-                        <td><?php echo $row['date_limite_paie2'];?></td>
+                        <td><?php echo date('d - m - Y', strtotime($row['date_releve2'])); ?></td>
+                        <td><?php echo date('d - m - Y', strtotime($row['date_presentation2'])); ?></td>
+                        <td><?php echo date('d - m - Y', strtotime($row['date_limite_paie2'])); ?></td>
                         <td>
                             <div class="action-buttons">
                                 <button class="btn btn-sm btn-warning"  data-bs-toggle="modal" data-bs-target="#editModal1-<?php echo htmlspecialchars($row['codeEau']); ?>" title="Modifier">
@@ -579,7 +579,6 @@ include("siderbar.php");
 </div>
 
 <!-- Edit Modal -->
-
 <?php
 include 'database.php';
 
@@ -590,31 +589,44 @@ if (isset($_POST['up-rel'])) {
     $date_releve = mysqli_real_escape_string($con, $_POST['date_releve']);
     $date_presentation = mysqli_real_escape_string($con, $_POST['date_presentation']);
     $date_limite_paie = mysqli_real_escape_string($con, $_POST['date_limite_paie']);
+    $idpaye = mysqli_real_escape_string($con, $_POST['idpaye']);
 
-    $query = "UPDATE releve_elec SET codecompteur='$codecompteur', valeur1='$valeur1', 
-              date_releve='$date_releve', date_presentation='$date_presentation', date_limite_paie='$date_limite_paie' 
-              WHERE codeElec='$codeElec'";
+    $query = "UPDATE RELEVE_ELEC SET 
+              codecompteur = '$codecompteur', 
+              valeur1 = '$valeur1', 
+              date_releve = '$date_releve', 
+              date_presentation = '$date_presentation', 
+              date_limite_paie = '$date_limite_paie'
+              WHERE codeElec = '$codeElec'";
 
-    if (mysqli_query($con, $query)){
-        $query_compteur = "SELECT pu FROM compteur WHERE codecompteur='$codecompteur' AND type='elec'";
+    if (mysqli_query($con, $query)) {
+        $query_compteur = "SELECT pu FROM COMPTEUR WHERE codecompteur = '$codecompteur'";
         $result_compteur = mysqli_query($con, $query_compteur);
-        if (mysqli_num_rows($result_compteur) > 0) {
+
+        if ($result_compteur && mysqli_num_rows($result_compteur) > 0) {
             $compteur = mysqli_fetch_assoc($result_compteur);
             $pu = $compteur['pu'];
+
             $montant = $pu * $valeur1;
-            $query_update_payer = "UPDATE payer SET montant ='$montant' WHERE codecli IN 
-                                    (SELECT codecli FROM client WHERE codecli IN 
-                                    (SELECT codecli FROM compteur WHERE codecompteur='$codecompteur'))";
-            mysqli_query($con, $query_update_payer);
+
+            $query_update_payer = "UPDATE PAYER SET montant = '$montant' WHERE idpaye = '$idpaye'";
+
+            if (mysqli_query($con, $query_update_payer)) {
+                $_SESSION['status'] = "Modification du relevé avec succès et mise à jour du montant !";
+                echo "<script type='text/javascript'>
+                        window.location.href = 'releves.php';
+                      </script>";
+            } else {
+                echo "Erreur lors de la mise à jour du montant dans la table PAYER : " . mysqli_error($con);
+            }
+        } else {
+            echo "Erreur : Le compteur n'a pas pu être trouvé.";
         }
-        $_SESSION ['status'] = "Modification du relevé avec success !";
-        echo "<script type='text/javascript'>
-                window.location.href = 'releves.php';
-              </script>";
     } else {
-        echo "Erreur lors de mise à jour du relevé : " . mysqli_error($con);
+        echo "Erreur lors de la mise à jour du relevé : " . mysqli_error($con);
     }
 }
+
 $query = "SELECT * FROM releve_elec";
 $result = mysqli_query($con, $query);
 
@@ -718,10 +730,9 @@ if (isset($_POST['up-eau'])) {
 
             $montant = $pu * $valeur2;
 
-            $query_update_payer = "UPDATE payer 
-                                   SET montant='$montant' 
-                                   WHERE codecli IN (SELECT codecli FROM client WHERE codecli IN 
-                                                     (SELECT codecli FROM compteur WHERE codecompteur='$codecompteur'))";
+            $query_update_payer = "UPDATE payer SET montant='$montant' WHERE codecli IN 
+                                    (SELECT codecli FROM client WHERE codecli IN 
+                                    (SELECT codecli FROM compteur WHERE codecompteur='$codecompteur'))";
             mysqli_query($con, $query_update_payer);
         }
 
@@ -906,6 +917,24 @@ if (isset($_POST['del-releves'])) {
 
 <!-- Bootstrap JS -->
 <script src="js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // Supposons que tu récupères l'idpaye à partir d'un événement (ex: sélection d'un client)
+    document.getElementById('codecli').addEventListener('change', function() {
+        var codecli = this.value; // Récupère le codecli sélectionné
+        fetch(`get_idpaye.php?codecli=${codecli}`) // Appel AJAX pour récupérer l'idpaye
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "success") {
+                    document.getElementById('payeId').value = data.idpaye; // Définit la valeur du champ caché
+                } else {
+                    alert("Erreur : " + data.message);
+                }
+            })
+            .catch(error => console.error("Erreur AJAX :", error));
+    });
+</script>
+
 <script>
     const deleteButtons = document.querySelectorAll('[data-bs-target="#deleteModal"]');
     deleteButtons.forEach(button => {

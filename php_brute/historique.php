@@ -10,35 +10,74 @@ use PHPMailer\PHPMailer\Exception;
 
 require 'vendor/autoload.php';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
-    $email = $_POST['email'];
-    $nom = $_POST['nom'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Vérifie si c'est un envoi groupé
+    if (isset($_POST['clients'])) {
+        $clients = json_decode($_POST['clients'], true);
 
-    $mail = new PHPMailer(true);
-    $mail->CharSet = 'UTF-8';
+        foreach ($clients as $client) {
+            $email = $client['email'];
+            $nom = $client['nom'];
 
-    try {
-        $mail->isSMTP();
-        $mail->Host = 'smtp.gmail.com';
-        $mail->SMTPAuth = true;
-        $mail->Username = 'herllandysamoroschristy@gmail.com';
-        $mail->Password = 'sfaw duqz fbqh kqoe';
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = 587;
+            $mail = new PHPMailer(true);
+            $mail->CharSet = 'UTF-8';
 
-        $mail->setFrom('herllandysamoroschristy@gmail.com', 'Votre Société');
-        $mail->addAddress($email, $nom);
+            try {
+                $mail->isSMTP();
+                $mail->Host = 'smtp.gmail.com';
+                $mail->SMTPAuth = true;
+                $mail->Username = 'herllandysamoroschristy@gmail.com';
+                $mail->Password = 'sfaw duqz fbqh kqoe';
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port = 587;
 
-        $mail->isHTML(true);
-        $mail->Subject = 'Rappel de paiement de facture';
-        $mail->Body    = "Bonjour $nom,<br><br>Nous vous rappelons que vous avez une facture en attente de paiement. Veuillez régulariser votre situation dès que possible.<br><br>Cordialement,<br>Votre Société";
+                $mail->setFrom('herllandysamoroschristy@gmail.com', 'Votre Société');
+                $mail->addAddress($email, $nom);
 
-        $mail->send();
-        echo "<script type='text/javascript'>window.location.href = 'historique.php';</script>";
+                $mail->isHTML(true);
+                $mail->Subject = 'Rappel de paiement de facture';
+                $mail->Body    = "Bonjour $nom,<br><br>Nous vous rappelons que vous avez une facture en attente de paiement. Veuillez régulariser votre situation dès que possible.<br><br>Cordialement,<br>Votre Société";
+
+                $mail->send();
+                $results[] = ['email' => $email, 'status' => 'success'];
+            } catch (Exception $e) {
+                $results[] = ['email' => $email, 'status' => 'error', 'message' => $e->getMessage()];
+            }
+        }
+        echo json_encode(['status' => 'success', 'message' => 'Tous les e-mails ont été envoyés avec succès.']);
         exit;
-    } catch (Exception $e) {
-        echo "<script type='text/javascript'>window.location.href = 'historique.php';</script>";
-        exit;
+
+    } elseif (isset($_POST['email'])) {
+        // Gestion de l'envoi d'un seul e-mail (cas existant)
+        $email = $_POST['email'];
+        $nom = $_POST['nom'];
+
+        $mail = new PHPMailer(true);
+        $mail->CharSet = 'UTF-8';
+
+        try {
+            $mail->isSMTP();
+            $mail->Host = 'smtp.gmail.com';
+            $mail->SMTPAuth = true;
+            $mail->Username = 'herllandysamoroschristy@gmail.com';
+            $mail->Password = 'sfaw duqz fbqh kqoe';
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port = 587;
+
+            $mail->setFrom('herllandysamoroschristy@gmail.com', 'Votre Société');
+            $mail->addAddress($email, $nom);
+
+            $mail->isHTML(true);
+            $mail->Subject = 'Rappel de paiement de facture';
+            $mail->Body    = "Bonjour $nom,<br><br>Nous vous rappelons que vous avez une facture en attente de paiement. Veuillez régulariser votre situation dès que possible.<br><br>Cordialement,<br>Votre Société";
+
+            $mail->send();
+            echo json_encode(['status' => 'success', 'message' => 'E-mail envoyé avec succès à ' . $nom]);
+            exit;
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => 'Erreur lors de l\'envoi de l\'e-mail à ' . $nom]);
+            exit;
+        }
     }
 }
 ?>
@@ -371,6 +410,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
                         <span>Rappel envoyé</span>
                     </div>
                 </div>
+                <div>
+                    <button class="btn btn-primary mt-2 send-email-all">
+                        <i class="fas fa-envelope me-2"></i>Notifier par mail tous les clients
+                    </button>
+                </div>
             </div>
             <div class="table-responsive">
                 <table class="table">
@@ -395,16 +439,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
                     $fin_mois = date("Y-m-t", strtotime($debut_mois));
                     ?>
                     <?php
-                    $query = "SELECT CLIENT.codecli, CLIENT.nom, CLIENT.email FROM CLIENT
-                              LEFT JOIN COMPTEUR ON CLIENT.codecli = COMPTEUR.codecli
-                              LEFT JOIN RELEVE_ELEC ON COMPTEUR.codecompteur = RELEVE_ELEC.codecompteur
-                              LEFT JOIN RELEVE_EAU ON COMPTEUR.codecompteur = RELEVE_EAU.codecompteur
-                              LEFT JOIN PAYER ON CLIENT.codecli = PAYER.codecli
-                              WHERE (RELEVE_ELEC.date_limite_paie BETWEEN ? AND ? 
-                              OR RELEVE_EAU.date_limite_paie2 BETWEEN ? AND ?)
-                              AND PAYER.datepaie IS NULL
-                              GROUP BY CLIENT.codecli";
 
+                    $query = " SELECT CLIENT.codecli, CLIENT.nom, CLIENT.email, RELEVE_ELEC.codeElec AS codeReleve,
+                                'ELEC' AS typeReleve, RELEVE_ELEC.date_limite_paie AS dateLimite FROM CLIENT
+                                LEFT JOIN COMPTEUR ON CLIENT.codecli = COMPTEUR.codecli
+                                LEFT JOIN RELEVE_ELEC ON COMPTEUR.codecompteur = RELEVE_ELEC.codecompteur
+                                LEFT JOIN PAYER ON CLIENT.codecli = PAYER.codecli
+                                WHERE RELEVE_ELEC.date_limite_paie BETWEEN ? AND ? 
+                                AND PAYER.idpaye IS NULL UNION SELECT CLIENT.codecli, CLIENT.nom, CLIENT.email,
+                                RELEVE_EAU.codeEau AS codeReleve,
+                                'EAU' AS typeReleve, RELEVE_EAU.date_limite_paie2 AS dateLimite
+                                FROM CLIENT LEFT JOIN COMPTEUR ON CLIENT.codecli = COMPTEUR.codecli
+                                LEFT JOIN RELEVE_EAU ON COMPTEUR.codecompteur = RELEVE_EAU.codecompteur
+                                LEFT JOIN PAYER ON CLIENT.codecli = PAYER.codecli
+                                WHERE RELEVE_EAU.date_limite_paie2 BETWEEN ? AND ? 
+                                AND PAYER.idpaye IS NULL;";
                     $stmt = $con->prepare($query);
 
                     if (!$stmt) {
@@ -544,6 +593,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
 </script>
 
 <script>
+    function showToast() {
+        const toastElement = document.getElementById('emailToast');
+        const toast = new bootstrap.Toast(toastElement);
+        toast.show();
+    }
+
+    function sendEmail(email, name) {
+        console.log(`Envoi d'un e-mail à ${name} (${email})`);
+
+        setTimeout(() => {
+            showToast();
+        }, 500);
+    }
+
+    document.addEventListener('click', function(event) {
+        const button = event.target.closest('.send-email');
+        if (button) {
+            const email = button.getAttribute('data-email');
+            const name = button.getAttribute('data-nom');
+            sendEmail(email, name);
+        }
+    });
+    document.querySelector('.send-email-all').addEventListener('click', function() {
+        const clients = [];
+        document.querySelectorAll('.send-email').forEach(function(button) {
+            const email = button.getAttribute('data-email');
+            const name = button.getAttribute('data-nom');
+            clients.push({ email, name });
+        });
+
+        clients.forEach(client => {
+            sendEmail(client.email, client.name);
+        });
+
+        setTimeout(() => {
+            showToast();
+        }, 500 * clients.length);
+    });
+
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+</script>
+
+<script>
     function loadClients() {
         const clientSelector = document.getElementById('clientSelector');
 
@@ -658,7 +753,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
     }
 </script>
 
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var emailToast = new bootstrap.Toast(document.getElementById('emailToast'));
 
+        document.querySelector('.send-email-all').addEventListener('click', function() {
+            var clients = [];
+            document.querySelectorAll('.send-email').forEach(function(button) {
+                var email = button.getAttribute('data-email');
+                var nom = button.getAttribute('data-nom');
+                clients.push({ email: email, nom: nom });
+            });
+
+            fetch('historique.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'clients=' + encodeURIComponent(JSON.stringify(clients))
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        emailToast.show();
+                    } else {
+                        alert('Erreur: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                });
+        });
+    });
+</script>
 <script src="js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

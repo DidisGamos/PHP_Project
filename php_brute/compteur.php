@@ -541,7 +541,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                             <!-- Prix Unitaire -->
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Prix Unitaire</label>
-                                <input type="number" step="0.01" class="form-control" name="pu" value="<?php echo htmlspecialchars($row['pu']); ?>" required>
+                                <input type="number" step="0.01" class="form-control" name="pu" value="<?php echo htmlspecialchars($row['pu']); ?>" readonly>
                             </div>
                         </div>
                         <div class="modal-footer">

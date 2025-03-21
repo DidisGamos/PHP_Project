@@ -10,18 +10,18 @@ if (isset($_GET['idpaye'])) {
 
     include 'database.php';
 
-    $query = "SELECT PAYER.idpaye, CLIENT.nom, CLIENT.codecli, CLIENT.quartier, CLIENT.email, 
-                COMPTEUR.type, COMPTEUR.pu, COMPTEUR.codecompteur,
-                CASE WHEN COMPTEUR.type = 'elec' THEN RELEVE_ELEC.codeElec ELSE RELEVE_EAU.codeEau END AS code_releve,
-                CASE WHEN COMPTEUR.type = 'elec' THEN RELEVE_ELEC.valeur1 ELSE RELEVE_EAU.valeur2 END AS consommation,
-                CASE WHEN COMPTEUR.type = 'elec' THEN RELEVE_ELEC.date_presentation ELSE RELEVE_EAU.date_presentation2 END AS date_presentation,
-                CASE WHEN COMPTEUR.type = 'elec' THEN RELEVE_ELEC.date_limite_paie ELSE RELEVE_EAU.date_limite_paie2 END AS date_limite,
-                PAYER.datepaie, PAYER.montant FROM PAYER
-                INNER JOIN CLIENT ON PAYER.codecli = CLIENT.codecli
-                INNER JOIN COMPTEUR ON CLIENT.codecli = COMPTEUR.codecli
-                LEFT JOIN RELEVE_ELEC ON COMPTEUR.codecompteur = RELEVE_ELEC.codecompteur
-                LEFT JOIN RELEVE_EAU ON COMPTEUR.codecompteur = RELEVE_EAU.codecompteur
-                WHERE PAYER.idpaye = '$idpaye'";
+    $query = "( SELECT p.idpaye, c.codecli, c.nom, CASE WHEN ec.type = 'elec' THEN e.codeElec 
+               ELSE NULL END AS code_releve, ec.pu AS pu, e.valeur1 AS consommation, e.date_presentation 
+               AS date_presentation, e.date_limite_paie AS date_limite, p.datepaie, p.montant, c.email, c.quartier, 
+               'elec' AS type FROM payer p JOIN client c ON p.codecli = c.codecli JOIN compteur ec ON c.codecli = ec.codecli 
+               AND ec.type = 'elec' JOIN releve_elec e ON ec.codecompteur = e.codecompteur WHERE p.idpaye = '$idpaye' 
+               AND p.montant = (e.valeur1 * ec.pu) ) UNION ( SELECT p.idpaye, c.codecli, c.nom, CASE 
+               WHEN wc.type = 'eau' THEN w.codeEau ELSE NULL END AS code_releve, wc.pu AS pu, w.valeur2 AS consommation, 
+               w.date_presentation2 AS date_presentation, w.date_limite_paie2 AS date_limite, p.datepaie, 
+               p.montant, c.email, c.quartier, 'eau' AS type FROM payer p JOIN client c ON p.codecli = c.codecli 
+               JOIN compteur wc ON c.codecli = wc.codecli AND wc.type = 'eau' 
+               JOIN releve_eau w ON wc.codecompteur = w.codecompteur 
+               WHERE p.idpaye = '$idpaye' AND p.montant = (w.valeur2 * wc.pu) ) ORDER BY idpaye ASC";
 
     $query_run = mysqli_query($con, $query);
     $data = mysqli_fetch_array($query_run);
@@ -58,11 +58,11 @@ if (isset($_GET['idpaye'])) {
         $pdf->Cell(80, 10, iconv('UTF-8', 'CP1252', 'Facture N° ') . iconv('UTF-8', 'CP1252', $data['idpaye']), 0, 1, 'R');
         $pdf->SetFont('Arial', '', 11);
         $pdf->SetXY(120, $y + $imageHeight + 20);
-        $pdf->Cell(80, 7, iconv('UTF-8', 'CP1252', 'Date d\'émission : ') . iconv('UTF-8', 'CP1252', $data['date_presentation']), 0, 1, 'R');
+        $pdf->Cell(80, 7, iconv('UTF-8', 'CP1252', 'Date d\'émission : ') . iconv('UTF-8', 'CP1252', date('d - m - Y', strtotime($data['date_presentation']))), 0, 1, 'R');
         $pdf->SetXY(120, $y + $imageHeight + 27);
-        $pdf->Cell(80, 7, 'Date limite : ' . $data['date_limite'], 0, 1, 'R');
+        $pdf->Cell(80, 7, 'Date limite : ' . date('d - m - Y', strtotime($data['date_limite'])), 0, 1, 'R');
         $pdf->SetXY(120, $y + $imageHeight + 34);
-        $pdf->Cell(80, 7, 'Date paiement : ' . $data['datepaie'], 0, 1, 'R');
+        $pdf->Cell(80, 7, 'Date paiement : ' . date('d - m - Y', strtotime($data['datepaie'])), 0, 1, 'R');
 
         $pdf->SetXY(10, $y + $imageHeight + 55);
         $pdf->SetFont('Arial', 'B', 12);

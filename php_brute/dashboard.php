@@ -112,7 +112,10 @@ include ('siderbar.php');
         padding: 15px;
         vertical-align: middle;
     }
-
+    #paiementChart{
+        width: 800px!important;
+        height: 350px!important;
+    }
     @media (max-width: 768px) {
         .main-content {
             margin-left: 0;
@@ -223,29 +226,20 @@ include ('siderbar.php');
             <?php
             include 'database.php';
 
-            $query = "SELECT CLIENT.nom, COMPTEUR.type, 
-       MAX(RELEVE_ELEC.valeur1) AS conso_elec, 
-       MAX(RELEVE_ELEC.date_releve) AS date_releve_elec, 
-       MAX(RELEVE_ELEC.date_presentation) AS date_pres_elec, 
-       MAX(RELEVE_ELEC.date_limite_paie) AS date_limite_elec,
-       MAX(RELEVE_EAU.valeur2) AS conso_eau, 
-       MAX(RELEVE_EAU.date_releve2) AS date_releve_eau, 
-       MAX(RELEVE_EAU.date_presentation2) AS date_pres_eau, 
-       MAX(RELEVE_EAU.date_limite_paie2) AS date_limite_eau,
-       MAX(PAYER.datepaie) AS datepaie, 
-       MAX(PAYER.montant) AS montant
-FROM CLIENT
-INNER JOIN COMPTEUR ON CLIENT.codecli = COMPTEUR.codecli
-LEFT JOIN RELEVE_ELEC ON COMPTEUR.codecompteur = RELEVE_ELEC.codecompteur
-LEFT JOIN RELEVE_EAU ON COMPTEUR.codecompteur = RELEVE_EAU.codecompteur
-LEFT JOIN PAYER ON CLIENT.codecli = PAYER.codecli
-GROUP BY CLIENT.nom, COMPTEUR.type
-ORDER BY COALESCE(MAX(RELEVE_ELEC.date_limite_paie), MAX(RELEVE_EAU.date_limite_paie2)) DESC";
-
+            $query = "SELECT CLIENT.nom, COMPTEUR.type, RELEVE_ELEC.valeur1 AS conso_elec, RELEVE_ELEC.date_releve AS date_releve_elec, 
+                        RELEVE_ELEC.date_presentation AS date_pres_elec, RELEVE_ELEC.date_limite_paie AS date_limite_elec,
+                        RELEVE_EAU.valeur2 AS conso_eau, RELEVE_EAU.date_releve2 AS date_releve_eau, 
+                        RELEVE_EAU.date_presentation2 AS date_pres_eau, RELEVE_EAU.date_limite_paie2 AS date_limite_eau,
+                        MAX(PAYER.datepaie) AS datepaie, MAX(PAYER.montant) AS montant FROM CLIENT
+                        INNER JOIN COMPTEUR ON CLIENT.codecli = COMPTEUR.codecli LEFT JOIN RELEVE_ELEC 
+                        ON COMPTEUR.codecompteur = RELEVE_ELEC.codecompteur
+                        LEFT JOIN RELEVE_EAU ON COMPTEUR.codecompteur = RELEVE_EAU.codecompteur
+                        LEFT JOIN PAYER ON CLIENT.codecli = PAYER.codecli GROUP BY CLIENT.nom, COMPTEUR.type
+                        ORDER BY CLIENT.nom, COMPTEUR.type, 
+                        COALESCE(RELEVE_ELEC.date_releve, RELEVE_EAU.date_releve2) DESC";
             $query_run = mysqli_query($con, $query);
             ?>
-
-
+            
             <div class="table-responsive">
                 <table class="table" id="compteurTable">
                     <thead>

@@ -5,29 +5,18 @@ include 'database.php';
 if (isset($_POST['clientId'])) {
     $clientId = $_POST['clientId'];
 
-    $query = "
-        SELECT SUM(p.montant) AS totalAmount
-        FROM PAYER p
-        WHERE p.codecli = '$clientId'
-    ";
-
-    $result = mysqli_query($con, $query);
-    $totalAmount = 0;
-
-    if ($row = mysqli_fetch_assoc($result)) {
-        $totalAmount = $row['totalAmount'];
-    }
-
+    // Requête pour récupérer les 3 derniers paiements et calculer le total
     $queryInvoices = "
         SELECT p.idpaye, p.datepaie, p.montant
         FROM PAYER p
         WHERE p.codecli = '$clientId'
-        ORDER BY p.datepaie DESC
+        ORDER BY p.idpaye DESC
         LIMIT 3
     ";
 
     $resultInvoices = mysqli_query($con, $queryInvoices);
     $invoices = [];
+    $totalAmount = 0;
 
     while ($row = mysqli_fetch_assoc($resultInvoices)) {
         $invoices[] = [
@@ -36,11 +25,14 @@ if (isset($_POST['clientId'])) {
             'amount' => $row['montant'],
             'status' => $row['montant'] > 0 ? 'paid' : 'pending',
         ];
+        // Ajouter chaque montant à totalAmount pour le total des 3 derniers paiements
+        $totalAmount += $row['montant'];
     }
 
+    // Retourner les données sous forme JSON
     echo json_encode([
         'invoices' => $invoices,
-        'totalAmount' => $totalAmount
+        'totalAmount' => number_format($totalAmount, 2, ',', ' ')
     ]);
 }
 ?>
