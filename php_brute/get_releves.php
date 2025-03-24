@@ -28,8 +28,8 @@ while ($row = mysqli_fetch_assoc($result)) {
 
     if ($releve = mysqli_fetch_assoc($result_releve)) {
         $data[] = [
-            'codecompteur' => $codecompteur, // Valeur réelle du compteur
-            'code' => $type == 'ELEC' ? $releve['codeElec'] : $releve['codeEau'], // Code du relevé à afficher
+            'codecompteur' => $codecompteur,
+            'code' => $type == 'ELEC' ? $releve['codeElec'] : $releve['codeEau'],
             'type' => $type
         ];
     }

@@ -11,7 +11,6 @@ use PHPMailer\PHPMailer\Exception;
 require 'vendor/autoload.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Vérifie si c'est un envoi groupé
     if (isset($_POST['clients'])) {
         $clients = json_decode($_POST['clients'], true);
 
@@ -48,7 +47,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
 
     } elseif (isset($_POST['email'])) {
-        // Gestion de l'envoi d'un seul e-mail (cas existant)
         $email = $_POST['email'];
         $nom = $_POST['nom'];
 

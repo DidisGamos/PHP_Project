@@ -668,25 +668,25 @@ if (isset($_POST['delete-paye'])) {
 
 <script src="js/bootstrap.min.js"></script>
 <script src="js/bootstrap.bundle.min.js"></script>
-<script>
-    function getMontant(codecli, idpaye) {
-        if (codecli !== "") {
-            fetch(`get_valeur.php?codecli=${codecli}&idpaye=${idpaye}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === "success") {
-                        let montantField = document.querySelector(`#montant-${idpaye}`);
-                        if (montantField) {
-                            montantField.value = data.montant;
-                        }
-                    } else {
-                        alert("Erreur : " + data.message);
-                    }
-                })
-                .catch(error => console.error("Erreur AJAX :", error));
-        }
-    }
-</script>
+<!-- <script>-->
+<!--    function getmontant(codecli, idpaye) {-->
+<!--        if (codecli !== "") {-->
+<!--            fetch(`get_valeur.php?codecli=${codecli}&idpaye=${idpaye}`)-->
+<!--                .then(response => response.json())-->
+<!--                .then(data => {-->
+<!--                    if (data.status === "success") {-->
+<!--                        let montantfield = document.queryselector(`#montant-${idpaye}`);-->
+<!--                        if (montantfield) {-->
+<!--                            montantfield.value = data.montant;-->
+<!--                        }-->
+<!--                    } else {-->
+<!--                        alert("erreur : " + data.message);-->
+<!--                    }-->
+               <!-- }) -->
+<!--                .catch(error => console.error("erreur ajax :", error));-->
+<!--        }-->
+<!--    }-->
+<!--</script> -->
 <script>
     const deleteButtons = document.querySelectorAll('[data-bs-target="#deleteModal"]');
     deleteButtons.forEach(button => {

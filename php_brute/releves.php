@@ -609,7 +609,9 @@ if (isset($_POST['up-rel'])) {
 
             $montant = $pu * $valeur1;
 
-            $query_update_payer = "UPDATE PAYER SET montant = '$montant' WHERE idpaye = '$idpaye'";
+            $query_update_payer = "UPDATE payer SET montant='$montant' WHERE codecli IN 
+                                    (SELECT codecli FROM client WHERE codecli IN 
+                                    (SELECT codecli FROM compteur WHERE codecompteur='$codecompteur'))";
 
             if (mysqli_query($con, $query_update_payer)) {
                 $_SESSION['status'] = "Modification du relevé avec succès et mise à jour du montant !";
@@ -918,22 +920,22 @@ if (isset($_POST['del-releves'])) {
 <!-- Bootstrap JS -->
 <script src="js/bootstrap.bundle.min.js"></script>
 
-<script>
-    // Supposons que tu récupères l'idpaye à partir d'un événement (ex: sélection d'un client)
-    document.getElementById('codecli').addEventListener('change', function() {
-        var codecli = this.value; // Récupère le codecli sélectionné
-        fetch(`get_idpaye.php?codecli=${codecli}`) // Appel AJAX pour récupérer l'idpaye
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === "success") {
-                    document.getElementById('payeId').value = data.idpaye; // Définit la valeur du champ caché
-                } else {
-                    alert("Erreur : " + data.message);
-                }
-            })
-            .catch(error => console.error("Erreur AJAX :", error));
-    });
-</script>
+<!--<script>-->
+<!---->
+<!--    document.getElementById('codecli').addEventListener('change', function() {-->
+<!--        var codecli = this.value;-->
+<!--        fetch(`get_idpaye.php?codecli=${codecli}`)-->
+<!--            .then(response => response.json())-->
+<!--            .then(data => {-->
+<!--                if (data.status === "success") {-->
+<!--                    document.getElementById('payeId').value = data.idpaye;-->
+<!--                } else {-->
+<!--                    alert("Erreur : " + data.message);-->
+<!--                }-->
+<!--            })-->
+<!--            .catch(error => console.error("Erreur AJAX :", error));-->
+<!--    });-->
+<!--</script>-->
 
 <script>
     const deleteButtons = document.querySelectorAll('[data-bs-target="#deleteModal"]');
