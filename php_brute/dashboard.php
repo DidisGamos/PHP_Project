@@ -304,7 +304,7 @@ include ('siderbar.php');
 <!-- Bootstrap JS -->
 <script src="js/bootstrap.bundle.min.js"></script>
 
-    <script src="./chart.js-4.4.8/package/dist/chart.umd.js"></script>
+<script src="./chart.js-4.4.8/package/dist/chart.umd.js"></script>
 
 <script>
     document.addEventListener("DOMContentLoaded", function () {
