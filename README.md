@@ -26,7 +26,7 @@ Elle inclut la gestion des clients, compteurs, relevés, calcul automatique des 
 
 1. **Cloner le dépôt**  
 ```bash
-git clone https://github.com/utilisateur/nom-du-projet.git
+git clone https://github.com/DidisGamos/PHP_Project.git
 
 ```
 
