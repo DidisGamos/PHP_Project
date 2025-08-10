@@ -62,7 +62,3 @@ Ouvrir dans un navigateur :  http://localhost/project_php
 ## 📄 Auteur  
 Didis Gamos — [@DidisGamos](https://github.com/DidisGamos)
 
----
-
-## 📜 Licence  
-*(Ajouter ici les informations sur la licence, ex : MIT)*
